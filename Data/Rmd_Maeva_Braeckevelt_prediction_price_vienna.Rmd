@@ -105,7 +105,10 @@ yvar <- "price"
 
 ## Label engineering
 
-My predicted variable is the price of hotel in Euro. I kept only the price under 400 euro
+My predicted variable is the price of hotel in Euro. I kept only the price under 400 euro.
+The minimun price for a night is 27 euro and the maximum 384 euro. The mean is 122.9 euro.
+I observed that the distribution of the price is skewed with a right tail and some extreme values.
+I did not transform my y variable to simplify my interpretation of the residuals
 
 ```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
 pander(summary_table)
@@ -360,31 +363,31 @@ I decided to categorize my X variable in 4 categories :
 
 **Location**
 
-* the neigbhourhood : I factorized all the different neigbhourhood, and if a neigbhourhood appears less than 5 times in the data set, it is categorized as small_neigbhourhood
+* Neigbhourhood : I factorized all the different neigbhourhood, and if a neigbhourhood appears less than 5 times in the data set, it is categorized as small_neigbhourhood
 
 * Distance : It is the distance from the city center, I only kept hotel that were maximum 5km away of the city center
 
-* distnace_alter : It is the distance from the Donauturm.
+* Distance_alter : It is the distance from the Donauturm.
 
-**Rating¨**
+**Rating**
 
-* stars : This variable show the total of stars of the hotels
+* Stars : This variable show the total of stars of the hotels
 
-* rating : It's the user rating average, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
+* Rating : It's the user rating average, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
 
-* rating_count : It is the number of user ratings, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
+* Rating_count : It is the number of user ratings, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
 
-* ratingta : It's the user rating average from the website Tripadvisor, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
+* Ratingta : It's the user rating average from the website Tripadvisor, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
 
-* ratingta_count : It is the number of user ratings in the tripadvisor website, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
+* Ratingta_count : It is the number of user ratings in the tripadvisor website, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
 
 **Value**
 
-* scarce_room : This variable was flagged, if room was noted as scarce
+* Scarce_room : This variable was flagged, if room was noted as scarce
 
-* offer : This variable was flagged, if there was an offer available 
+* Offer : This variable was flagged, if there was an offer available 
 
-* offer_cat ; The offers for the roooms were categorized
+* Offer_cat : The offers for the roooms were categorized
 
 
 **Interactions**
@@ -399,7 +402,7 @@ I choose my interactions with common knowledge :
 
 * distance_alter with rating
 
-I decided to keep only hotels as a type of accomodation and only thoses that were in the actual city Vienna
+I decided to keep only hotels as a type of accommodation and only thoses that were in the actual city Vienna
 My sample is composed by 246 observations.
 
 # Models
@@ -582,21 +585,170 @@ final_models <-
   list("CART" = cart_model,
        "Random_forest" = rf_model)
 
-results <- resamples(final_models)
+results <- resamples(final_models) %>% summary() 
 
+CART_RMSE <- summary(cart_model$resample$RMSE)
+CART_Rsquared <- summary(cart_model$resample$Rsquared)
+RF_RMSE <- summary(rf_model$resample$RMSE)
+RF_Rsquared <- summary(rf_model$resample$Rsquared)
 
+result_combined <- rbind(CART_RMSE,RF_RMSE, CART_Rsquared, RF_Rsquared)
 
 ```
-
-
+I used three different kind of models : OLS, CART and Random forest.
+For the OLS, I did a model with every predictors: X1,X2,X3 and X4.
+From the table below, I observed the model 3 is the best model : it had the lowest RMSE, the second best Rsquare, and the second lowest BIC.
+I chose to use this model for the Cart and the Random Forest.
+After taking the average of all the folds of the cross validation, I got the result of the second table below. I observed that the Random forest had the lowest RMSE and the Higher Rsquares of the three models.
+I will rerun the model (with no cross validation) on all the dataset, with the best parameters that I found  : 5 mtry and 5 minimum node'size.
 
 ```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
 
 
 pander(t1)
+pander(result_combined)
 
-pander(results)
+```
+```{r, include=FALSE}
+
+
+## I will chose this model for my prediction So I will the Run the prediction on the whole dataset with the best parameter
+
+# set tuning for final model
+
+train_control <- trainControl(method = "none",verboseIter = FALSE)
+
+tune_grid <- expand.grid(
+  .mtry = c(5),
+  .splitrule = "variance",
+  .min.node.size = c(5)
+)
+set.seed(20180123)
+rf_model_final <- train(model_cart,
+                        data = data,
+                        method = "ranger",
+                        trControl = train_control,
+                        tuneGrid = tune_grid,
+                        importance = "impurity"
+)
+
+rf_model_final
+```
+
+# Predcition
+
+With my final model, I found my predicted value for my y variable : the price of a room for one night.
+I could then caluclated the residuals : the difference between the real prices and the predicted one.
+Find below, the graph of those two values. I observed than my prediction is close to the line, so my model is good.
+
+```{r, include=FALSE}
+
+# Predictions -------------------------------------------------------------
+
+
+data$rf_predicted_probabilities <- predict(rf_model_final, newdata = data, type = "raw")
+
+
+# Calculate residuals
+
+data$rf_prediction_res <- data$price - data$rf_predicted_probabilities
+
+data %>% select(price, rf_prediction_res, rf_predicted_probabilities)
+level_vs_pred <- ggplot(data = data) +
+  geom_point(aes(y=price, x=data$rf_predicted_probabilities), color = "orangered4", size = 1,
+             shape = 16, alpha = 0.7, show.legend=FALSE) +
+  geom_segment(aes(x = 0, y = 0, xend = 400, yend = 400), size=0.5, color="salmon", linetype=2) +
+  coord_cartesian(xlim = c(0, 400), ylim = c(0, 400)) +
+  scale_x_continuous(expand = c(0.01,0.01),limits=c(0, 400), breaks=seq(0, 400, by=50)) +
+  scale_y_continuous(expand = c(0.01,0.01),limits=c(0, 400), breaks=seq(0, 400, by=50)) +
+  labs(y = "Price (EURO)", x = "Predicted price  (EURO)") +
+  theme_bg() 
+ 
+
+```
+```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
+level_vs_pred 
+
 
 ```
 
+# Comparaison of the 5 best deals
 
+The five best deals of my sample, is the lowest residuals.Indeed, if there is a big negative difference between the actual price and the predicted price, it means that the hotels are cheaper than expected.
+Find below the 5 best deals of my sample compare to the 5 best deals we found in the chapter 10 with a different model.
+
+```{r, include=FALSE}
+
+# Check the ones with the smallest (negative) residuals 
+
+Five5hotels <- data %>% top_n( -5 , rf_prediction_res ) %>% 
+  select( hotel_id , price, stars, rf_predicted_probabilities , rf_prediction_res )
+
+# List of 5 best deals
+bestdeals <- data %>%
+  select(hotel_id, price, rf_prediction_res, distance, stars, rating) %>%
+  arrange(rf_prediction_res) %>%
+  .[1:5,] %>%
+  as.data.frame() 
+
+pander(bestdeals)
+
+# best deals from chapter 10
+
+Other5hotels <- data[data$hotel_id %in% c(21912, 21975, 22080, 22184, 22344),]
+bestotherdeals <- Other5hotels  %>%
+  select(hotel_id, price, rf_prediction_res, distance, stars, rating) %>%
+  .[1:5,] %>%
+  as.data.frame() 
+
+## All differents hotels because I did not filter only 3 and 4 stars
+
+## I can compare for the 3 and 4 stars
+
+data3and4 <- data %>% filter(stars>=3 & stars<=4) 
+
+bestdeals3and4 <- data3and4 %>%
+  select(hotel_id, price, rf_prediction_res, distance, stars, rating) %>%
+  arrange(rf_prediction_res) %>%
+  .[1:5,] %>%
+  as.data.frame() 
+
+
+
+
+
+```
+```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
+pander(bestdeals)
+pander(bestotherdeals)
+
+
+```
+
+I obsersved that the hotels are totally different, it can be because in the chapter 10 we kept only 3 and 4 stars hotel while in this sample I kept all the star.
+So I filter to only 3 an 4 stars and then now I have two hotels in common.
+
+```{r, include=FALSE}
+
+# Check the ones with the smallest (negative) residuals 
+## All differents hotels because I did not filter only 3 and 4 stars
+
+## I can compare for the 3 and 4 stars
+data3and4 <- data %>% filter(stars>=3 & stars<=4) 
+
+bestdeals3and4 <- data3and4 %>%
+  select(hotel_id, price, rf_prediction_res, distance, stars, rating) %>%
+  arrange(rf_prediction_res) %>%
+  .[1:5,] %>%
+  as.data.frame() 
+
+
+
+```
+```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
+
+pander(bestdeals3and4)
+
+```
+
+Now, I observed that I have 3 hotels in common.
