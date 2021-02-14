@@ -1,8 +1,9 @@
 ---
-title: "Prediction of hotel's Price in Vienna"
+title: "Prediction of hotel's price in Vienna"
 author: "Maeva_Braeckevelt"
 date: "12/02/2021"
-output: html_document
+output:
+  html_document: default
 ---
 
 
@@ -58,9 +59,15 @@ data$month
 # data already good!
 ```
 
+# Summary
+
+This analysis aimed at comparing best deals in hotels in Vienna found with my models to the one we found during our analysis in chapter 10. I used three different models: OLS, CART and Ramdom forest. After comparing the RMSE and Rsquare, I chose the Random forest Model as my best model. I run it again on my whole sample with my best parameters. I predicted the price of my hotels and calculated my residuals. From my fives best deals (lowest residuals), I had two in common with the previous analysis from chapter 10.
+
+
+
 # Introduction
 
-This analysis aimed at predicting the price of hotels in Vienna in order to find the best deals.The data used was gathered in a csv files : The hotels-vienna.csv.The main variables that I used were: the price in euro (y). My sample is the price of the hotels in Vienna in the weekday of November 2017.
+This analysis aimed at predicting the price of hotels in Vienna in order to find the best deals.The data used was gathered in a csv files : The hotels-vienna.csv. My predicted variable is the price in euro (y). My sample the hotels in Vienna in the weekday of November 2017.
 
 # Data
 ```{r, include=F, message=FALSE, echo=FALSE, eval=TRUE}
@@ -72,9 +79,6 @@ This analysis aimed at predicting the price of hotels in Vienna in order to find
 # Price distribution
 
 summary(data$price)
-summary_table <- summary(data$price)
-pander(summary_table)
-
 data %>% 
   keep(is.numeric) %>%
   ggplot(aes(x= price))+
@@ -96,6 +100,8 @@ data %>%
   scale_fill_wsj()+
   labs(x = "Price in euro",y = "count of hotels")
 
+summary_table <- summary(data$price)
+
 
 # better distribution, I will not transform my y variable, it will be easier for my residuals without transform it again
 yvar <- "price"
@@ -108,10 +114,11 @@ yvar <- "price"
 My predicted variable is the price of hotel in Euro. I kept only the price under 400 euro.
 The minimun price for a night is 27 euro and the maximum 384 euro. The mean is 122.9 euro.
 I observed that the distribution of the price is skewed with a right tail and some extreme values.
-I did not transform my y variable to simplify my interpretation of the residuals
+I did not transform my y variable to simplify my interpretation of the residuals.
 
 ```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
 pander(summary_table)
+
 data %>% 
   keep(is.numeric) %>%
   ggplot(aes(x= price))+
@@ -121,11 +128,6 @@ data %>%
   labs(x = "Price in euro",y = "count of hotels")
 
 ```
-
-
-The minimun price for a night is 27 euro and the maximum 384 euro. The mean is 122.9 euro.
-I observed that the distribution of the price is skewed with a right tail and some extreme values.
-I did not transform my y variable to simplify my interpretation of the residuals
 
 ## Feature Engeneering
 ```{r, include=F, message=FALSE, echo=FALSE, eval=TRUE}
@@ -359,50 +361,50 @@ interactions <- c("distance*stars", "distance_alter*stars", "distance*rating", "
 
 ```
 
-I decided to categorize my X variable in 4 categories :
+I decided to categorize my X variables in 4 categories :
 
 **Location**
 
-* Neigbhourhood : I factorized all the different neigbhourhood, and if a neigbhourhood appears less than 5 times in the data set, it is categorized as small_neigbhourhood
+* Neigbhourhood : I factorized all the different neigbhourhood, and if a neigbhourhood appears less than 5 times in the sample, it is categorized as small_neigbhourhood.
 
-* Distance : It is the distance from the city center, I only kept hotel that were maximum 5km away of the city center
+* Distance : It is the distance from the city center, I only kept hotels that were maximum 5km away of the city center
 
 * Distance_alter : It is the distance from the Donauturm.
 
 **Rating**
 
-* Stars : This variable show the total of stars of the hotels
+* Stars : This variable shows the total of stars of the hotels
 
-* Rating : It's the user rating average, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
+* Rating : It's the user rating average, they were some missing values that I replace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
 
-* Rating_count : It is the number of user ratings, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
+* Rating_count : It is the number of user ratings, they were some missing values that I replace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
 
-* Ratingta : It's the user rating average from the website Tripadvisor, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
+* Ratingta : It's the user rating average from the website Tripadvisor, they were some missing values that I replace by 0, I did not flag them because, no other hotels had 0 as rating and I did not want to add variable if it was not needed
 
-* Ratingta_count : It is the number of user ratings in the tripadvisor website, they were some missing values that I remplace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
+* Ratingta_count : It is the number of user ratings in the Tripadvisor website, they were some missing values that I replace by 0, I did not flag them because, no other hotels had 0 rating and I did not want to add variable if it was not needed
 
 **Value**
 
-* Scarce_room : This variable was flagged, if room was noted as scarce
+* Scarce_room : This variable was flagged, if a room was noted as scarce
 
 * Offer : This variable was flagged, if there was an offer available 
 
-* Offer_cat : The offers for the roooms were categorized
+* Offer_cat : Different categories of offers
 
 
 **Interactions**
 
 I choose my interactions with common knowledge :
 
-* distance with stars
+* Distance with stars
 
-* distance_alter with stars
+* Distance_alter with stars
 
-* distance with rating
+* Distance with rating
 
-* distance_alter with rating
+* Distance_alter with rating
 
-I decided to keep only hotels as a type of accommodation and only thoses that were in the actual city Vienna
+I decided to keep only hotels as a type of accommodation and only those that were in the actual city of Vienna.
 My sample is composed by 246 observations.
 
 # Models
@@ -597,16 +599,16 @@ result_combined <- rbind(CART_RMSE,RF_RMSE, CART_Rsquared, RF_Rsquared)
 ```
 I used three different kind of models : OLS, CART and Random forest.
 For the OLS, I did a model with every predictors: X1,X2,X3 and X4.
-From the table below, I observed the model 3 is the best model : it had the lowest RMSE, the second best Rsquare, and the second lowest BIC.
+From the first table below, I observed the model 3 is the best model : it had the lowest RMSE, the second best Rsquare, and the second lowest BIC.
 I chose to use this model for the Cart and the Random Forest.
-After taking the average of all the folds of the cross validation, I got the result of the second table below. I observed that the Random forest had the lowest RMSE and the Higher Rsquares of the three models.
-I will rerun the model (with no cross validation) on all the dataset, with the best parameters that I found  : 5 mtry and 5 minimum node'size.
+After taking the average of all the folds of the cross validation, I got the result of the second table below. I observed that the Random forest had the lowest RMSE and the higher Rsquare of all models.
+I will rerun the model (with no cross validation) on all the sample, with the best parameters that I found  : 5 mtry and 5 minimum node'size.
 
 ```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
 
 
-pander(t1)
-pander(result_combined)
+pander(t1, caption = "OLS") 
+pander(result_combined, caption = "Cart & Random forest")
 
 ```
 ```{r, include=FALSE}
@@ -635,10 +637,9 @@ rf_model_final <- train(model_cart,
 rf_model_final
 ```
 
-# Predcition
+# Prediction
 
 With my final model, I found my predicted value for my y variable : the price of a room for one night.
-I could then caluclated the residuals : the difference between the real prices and the predicted one.
 Find below, the graph of those two values. I observed than my prediction is close to the line, so my model is good.
 
 ```{r, include=FALSE}
@@ -674,7 +675,8 @@ level_vs_pred
 
 # Comparaison of the 5 best deals
 
-The five best deals of my sample, is the lowest residuals.Indeed, if there is a big negative difference between the actual price and the predicted price, it means that the hotels are cheaper than expected.
+I could then calculate the residuals : the difference between the real price and the predicted one.
+The five best deals of my sample, is the lowest residuals. Indeed, if there is a big negative difference between the actual price and the predicted price, it means that the hotels are cheaper than expected.
 Find below the 5 best deals of my sample compare to the 5 best deals we found in the chapter 10 with a different model.
 
 ```{r, include=FALSE}
@@ -719,13 +721,13 @@ bestdeals3and4 <- data3and4 %>%
 
 ```
 ```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
-pander(bestdeals)
-pander(bestotherdeals)
+pander(bestdeals, caption = "Best deals for hotels - Random forest")
+pander(bestotherdeals, caption = "Best deals for hotels - Regression Chap10")
 
 
 ```
 
-I obsersved that the hotels are totally different, it can be because in the chapter 10 we kept only 3 and 4 stars hotel while in this sample I kept all the star.
+I observed that the hotels are totally different, it could be because, in chapter 10, we kept only 3 and 4 stars hotel while in this sample I kept all the stars.
 So I filter to only 3 an 4 stars and then now I have two hotels in common.
 
 ```{r, include=FALSE}
@@ -747,8 +749,10 @@ bestdeals3and4 <- data3and4 %>%
 ```
 ```{r, eval=TRUE, echo=FALSE, results='asis', warning= FALSE, message=FALSE}
 
-pander(bestdeals3and4)
+pander(bestdeals3and4, caption = "Best deals for 3 and 4 stars hotels - Random forest")
 
 ```
 
-Now, I observed that I have 3 hotels in common.
+# Conclusion
+
+This analysis aimed at comparing best deals in hotels in Vienna found with my models to the one we found during our analysis in chapter 10. I used three different models: OLS, CART and Ramdom forest. After comparing the RMSE and Rsquare, I chose the Random forest Model as my best model. I run it again on my whole sample with my best parameters. I predicted the price of my hotels and calculated my residuals. From my fives best deals (lowest residuals), I had two in common with the previous analysis from chapter 10.

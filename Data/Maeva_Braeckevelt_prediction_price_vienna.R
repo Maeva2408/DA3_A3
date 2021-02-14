@@ -1,7 +1,7 @@
 ################################################################################################
 # Data analysis 3:
 # Assignment 3 : Prediction of the price for Vienna's hotels
-# by Gabor BEKES and  Gabor KEZDI 
+# by Maeva Braeckevelt
 ###############################################################################################x
 
 # ------------------------------------------------------------------------------------------------------
@@ -29,8 +29,6 @@ library(ggplot2)
 library(GGally)
 
 
-
-
 # load theme and functions
 source("C:/Users/mbrae/OneDrive/Bureau/CEU/DA3/da_case_studies/ch00-tech-prep/theme_bg.R")
 source("C:/Users/mbrae/OneDrive/Bureau/CEU/DA3/da_case_studies/ch00-tech-prep/da_helper_functions.R")
@@ -40,7 +38,7 @@ options(digits = 3)
 #####################################################################
 
 
-# load vienna db
+# load Vienna db
 
 My_path <- "https://raw.githubusercontent.com/Maeva2408/DA3_A3/master/Data/hotels-vienna.csv"
 data <- read_csv(paste0(My_path))
@@ -59,7 +57,7 @@ data$month
 # Label Engeneering
 
 # I want to define my y variable
-# It is a prediction of price to find the best deals
+# It is a prediction of price to find the best deals In Vienna
 # Price distribution
 
 summary(data$price)
@@ -112,7 +110,6 @@ yvar <- "price"
 
 data <- filter( data ,data$accommodation_type == 'Hotel')
 
-
 #### country	- Country- string
 
 # No need as a  variable
@@ -122,13 +119,11 @@ data <- filter( data ,data$accommodation_type == 'Hotel')
 
 #### city_actual	- City actual of hotel - string
 
-
 data$city_actual
 
 # I will only used Vienna, So I will filter the other one
 
 data <- filter( data ,data$city_actual == 'Vienna')
-
 
 #### neighbourhood	- Neighburhood -string
 
@@ -323,9 +318,7 @@ value <- c("scarce_room", "offer", "offer_cat")
 
 interactions <- c("distance*stars", "distance_alter*stars", "distance*rating", "distance_alter*rating")
 
-## group the variable into categories
-# I will group them by adding more and more categories, and I choose the first one as benchmark, where I put only
-# stars
+# I will choose my models them by adding more and more categories
 
 
 X1 <- c(location)
@@ -362,6 +355,7 @@ folds_i <- sample(rep(1:n_folds, length.out = nrow(data) ))
 # Create results
 model_results_cv <- list()
 
+## OLS
 
 for (i in (1:4)){
   model_name <-  paste0("model",i)
@@ -416,8 +410,8 @@ t1
 pander(t1)
 
 
-# The model 3 has the lowest RMSE and a BIC slighly higer than  the model 2
-# I will chose this model for cart and RF
+# The model 3 has the lowest RMSE and the BIC slightly higher than  the model 2
+# I will chose model 3 for cart and RF
 
 # CART
 
@@ -481,10 +475,13 @@ final_models <-
        "Random_forest" = rf_model)
 
 results <- resamples(final_models) %>% summary()
+
+results
+
 pander(t1)
 
 
-## So the model with the best RMSE is the Random forest, it also have the best Rsquared!
+## So the model with the best RMSE is the Random forest, it also have the best Rsquared.
 
 ## I will chose this model for my prediction So I will the Run the prediction on the whole dataset with the best parameter
 
@@ -510,33 +507,35 @@ rf_model_final
 
 # Predictions -------------------------------------------------------------
 
-data$rf_predicted_probabilities <- predict(rf_model_final, newdata = data, type = "raw")
 
+rf_predicted_probabilities <- predict(rf_model_final, newdata = data, type = "raw")
+data$rf_predicted_probabilities <-rf_predicted_probabilities
 
 # Calculate residuals
 
-data$rf_prediction_res <- data$price - rf_predicted_probabilities
+data$rf_prediction_res <- data$price - data$rf_predicted_probabilities
 
 data %>% select(price, rf_prediction_res, rf_predicted_probabilities)
 
 # Check the ones with the smallest (negative) residuals 
 
 Five5hotels <- data %>% top_n( -5 , rf_prediction_res ) %>% 
-  select( hotel_id , price, price , rf_prediction , rf_prediction_res )
+  select( hotel_id , price, stars, rf_predicted_probabilities,rf_prediction_res , rf_prediction_res )
 
 # List of 5 best deals
 bestdeals <- data %>%
-  select(hotel_id, price, rf_prediction, distance, stars, rating) %>%
-  arrange(rf_prediction) %>%
+  select(hotel_id, price, ,rf_prediction_res, distance, stars, rating) %>%
+  arrange(rf_prediction_res) %>%
   .[1:5,] %>%
   as.data.frame() 
 
 pander(bestdeals)
 
+# best deals from chapter 10
 
 Other5hotels <- data[data$hotel_id %in% c(21912, 21975, 22080, 22184, 22344),]
 bestotherdeals <- Other5hotels  %>%
-  select(hotel_id, price, rf_prediction, distance, stars, rating) %>%
+  select(hotel_id, price,rf_prediction_res, distance, stars, rating) %>%
   .[1:5,] %>%
   as.data.frame() 
 
@@ -550,12 +549,25 @@ pander(bestotherdeals)
 data3and4 <- data %>% filter(stars>=3 & stars<=4) 
 
 bestdeals3and4 <- data3and4 %>%
-  select(hotel_id, price, rf_prediction, distance, stars, rating) %>%
-  arrange(rf_prediction) %>%
+  select(hotel_id, price,rf_prediction_res, distance, stars, rating) %>%
+  arrange(rf_prediction_res) %>%
   .[1:5,] %>%
   as.data.frame() 
 
 pander(bestdeals3and4)
 
 ## Now I have two in common!!
+
+# Plot price vs predicted price
+
+level_vs_pred <- ggplot(data = data) +
+  geom_point(aes(y=price, x=data$rf_predicted_probabilities), color = "Orangered4", size = 1,
+             shape = 16, alpha = 0.7, show.legend=FALSE) +
+  geom_segment(aes(x = 0, y = 0, xend = 400, yend = 400), size=0.5, color="salmon", linetype=2) +
+  coord_cartesian(xlim = c(0, 400), ylim = c(0, 400)) +
+  scale_x_continuous(expand = c(0.01,0.01),limits=c(0, 400), breaks=seq(0, 400, by=50)) +
+  scale_y_continuous(expand = c(0.01,0.01),limits=c(0, 400), breaks=seq(0, 400, by=50)) +
+  labs(y = "Price (EURO)", x = "Predicted price  (EURO)") +
+  theme_bg() 
+level_vs_pred 
 
